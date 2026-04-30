@@ -53,12 +53,14 @@ app.post('/api/company', async (req, res) => {
   }
 });
 
-// Role lookup — find ONE person by title at a company (3 credits, cheapest people endpoint)
+// Role lookup — correct endpoint: /api/v2/find/company/role (3 credits)
 app.post('/api/role', async (req, res) => {
-  const { apiKey, linkedin_url, role } = req.body;
-  if (!apiKey || !linkedin_url || !role) return res.status(400).json({ error: 'Missing fields' });
+  const { apiKey, linkedin_url, company_name, role } = req.body;
+  if (!apiKey || !role) return res.status(400).json({ error: 'Missing fields' });
 
-  const url = `https://enrichlayer.com/api/v2/company/employee/role?linkedin_company_profile_url=${encodeURIComponent(linkedin_url)}&role=${encodeURIComponent(role)}&use_cache=if-present`;
+  let url = `https://enrichlayer.com/api/v2/find/company/role?role=${encodeURIComponent(role)}&enrich_profile=enrich&use_cache=if-present`;
+  if (linkedin_url) url += `&linkedin_company_profile_url=${encodeURIComponent(linkedin_url)}`;
+  if (company_name) url += `&company_name=${encodeURIComponent(company_name)}`;
 
   try {
     const response = await apiFetch(url, apiKey);
@@ -74,7 +76,7 @@ app.post('/api/test', async (req, res) => {
   const { apiKey } = req.body;
   if (!apiKey) return res.status(400).json({ error: 'Missing apiKey' });
   try {
-    const response = await apiFetch('https://enrichlayer.com/api/v2/company?linkedin_company_profile_url=https://www.linkedin.com/company/apple&use_cache=if-present', apiKey);
+    const response = await apiFetch('https://enrichlayer.com/api/v2/company?url=https://www.linkedin.com/company/apple/&use_cache=if-present', apiKey);
     const data = await response.json();
     res.json({ status: response.status, ok: response.ok, company: data.name || JSON.stringify(data).slice(0, 100) });
   } catch (err) {
