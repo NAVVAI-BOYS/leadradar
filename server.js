@@ -6,7 +6,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+const publicPath = path.join(__dirname, 'public');
+console.log('Serving static files from:', publicPath);
+app.use(express.static(publicPath));
 
 // Rate limiter — Enrichlayer allows 2 req/min on trial, ~10/min on paid
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -84,6 +86,10 @@ app.post('/api/test', async (req, res) => {
   }
 });
 
-app.get('*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('*', (req, res) => {
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  console.log('Serving index from:', indexPath);
+  res.sendFile(indexPath);
+});
 
 app.listen(PORT, () => console.log(`LeadRadar running on port ${PORT}`));
