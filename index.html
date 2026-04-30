@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeadRadar v3</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── Themes ── */
+  [data-theme="dark"] {
+    --bg: #0a0a0f; --surface: #111118; --surface2: #1a1a24; --border: #2a2a3a;
+    --text: #e8e8f0; --muted: #6b6b8a; --card-bg: #1a1a24;
+  }
+  [data-theme="light"] {
+    --bg: #f4f4f8; --surface: #ffffff; --surface2: #f0f0f5; --border: #dddde8;
+    --text: #1a1a2e; --muted: #8888a8; --card-bg: #f8f8fc;
+  }
+  :root {
+    --accent: #00e5ff; --accent2: #7b61ff; --green: #00cc6a; --red: #ff4466; --yellow: #ffd166;
+    --font-display: 'Syne', sans-serif; --font-body: 'DM Sans', sans-serif; --font-mono: 'DM Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; transition: background 0.3s, color 0.3s; }
+
+  [data-theme="dark"] body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,0.03) 1px,transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  .container { max-width: 1240px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
+
+  /* ── Header ── */
+  header { padding: 24px 0 18px; border-bottom: 1px solid var(--border); margin-bottom: 28px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  .logo { font-family: var(--font-display); font-size: 21px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+  .logo-dot { width: 8px; height: 8px; background: var(--accent); border-radius: 50%; animation: pulse 2s infinite; }
+  .logo span { color: var(--accent); }
+  .logo small { font-size: 11px; font-family: var(--font-mono); color: var(--muted); margin-left: 4px; font-weight: 400; }
+
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .header-stats { display: flex; gap: 20px; }
+  .stat { text-align: right; }
+  .stat-value { font-family: var(--font-mono); font-size: 18px; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; }
+
+  .theme-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 16px; transition: all 0.2s; color: var(--text); }
+  .theme-toggle:hover { border-color: var(--accent); }
+
+  /* ── Layout ── */
+  .main { display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: start; padding-bottom: 40px; }
+
+  /* ── Panel ── */
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .panel-title { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  .section-title { font-size: 10px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1.5px; margin: 16px 0 8px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+  /* ── Search history ── */
+  .history-list { display: flex; flex-direction: column; gap: 4px; }
+  .history-item { display: flex; align-items: center; justify-content: space-between; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 11px; font-family: var(--font-mono); cursor: pointer; transition: border-color 0.15s; }
+  .history-item:hover { border-color: var(--accent); color: var(--accent); }
+  .history-item-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .history-del { color: var(--muted); margin-left: 8px; font-size: 13px; flex-shrink: 0; }
+  .history-del:hover { color: var(--red); }
+
+  /* ── Form ── */
+  .field { margin-bottom: 12px; }
+  label { display: block; font-size: 11px; color: var(--muted); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  input[type=text],input[type=password],input[type=number],select,textarea { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; color: var(--text); font-family: var(--font-body); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  input:focus,select:focus,textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.07); }
+  input::placeholder,textarea::placeholder { color: var(--muted); }
+  select option { background: var(--surface2); }
+  textarea { resize: vertical; min-height: 50px; font-size: 12px; }
+
+  .checkbox-group { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .checkbox-group label { display: flex; align-items: center; gap: 8px; color: var(--text); text-transform: none; letter-spacing: 0; font-size: 12px; cursor: pointer; font-family: var(--font-body); margin-bottom: 0; }
+  .checkbox-group input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); flex-shrink: 0; }
+
+  .tags-input { display: flex; flex-wrap: wrap; gap: 5px; background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 7px; min-height: 40px; cursor: text; }
+  .tags-input:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.07); }
+  .tag { background: rgba(0,229,255,0.1); border: 1px solid rgba(0,229,255,0.25); color: var(--accent); font-size: 11px; font-family: var(--font-mono); padding: 2px 7px; border-radius: 4px; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .tag-remove { cursor: pointer; opacity: 0.5; font-size: 13px; }
+  .tag-remove:hover { opacity: 1; }
+  .tags-input input { border: none; background: transparent; padding: 2px 4px; font-size: 12px; flex: 1; min-width: 80px; box-shadow: none; }
+
+  .hint { font-size: 10px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  /* ── Buttons ── */
+  .btn { width: 100%; padding: 12px; background: var(--accent); color: #000; border: none; border-radius: 8px; font-family: var(--font-display); font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; }
+  .btn:hover { background: #33eeff; transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,229,255,0.2); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+  .btn-sm { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 11px; padding: 8px; margin-top: 6px; }
+  .btn-sm:hover { background: var(--surface2); transform: none; box-shadow: none; border-color: var(--muted); color: var(--text); }
+  .btn-danger { background: transparent; border: 1px solid rgba(255,68,102,0.3); color: var(--red); font-size: 11px; padding: 7px; margin-top: 6px; }
+  .btn-danger:hover { background: rgba(255,68,102,0.08); transform: none; box-shadow: none; }
+
+  /* ── Progress bar ── */
+  .progress-wrap { margin-bottom: 10px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-track { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.4s ease; width: 0%; }
+  .progress-label { font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Results panel ── */
+  .results-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .results-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .results-title { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); }
+  .results-count { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+
+  .results-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-tabs { display: flex; gap: 5px; }
+  .tab { font-family: var(--font-mono); font-size: 10px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border); background: transparent; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .tab.active { background: rgba(0,229,255,0.1); border-color: rgba(0,229,255,0.3); color: var(--accent); }
+
+  .sort-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 5px; padding: 4px 8px; font-size: 11px; font-family: var(--font-mono); color: var(--muted); cursor: pointer; outline: none; }
+  .sort-select:focus { border-color: var(--accent); }
+
+  .results-body { padding: 16px 20px; min-height: 400px; }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 360px; gap: 10px; color: var(--muted); }
+  .empty-icon { font-size: 40px; opacity: 0.25; }
+  .empty-text { font-family: var(--font-mono); font-size: 12px; letter-spacing: 1px; }
+
+  .results-scroll { max-height: 640px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+  .results-scroll::-webkit-scrollbar { width: 4px; }
+  .results-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Cards ── */
+  .result-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-bottom: 10px; animation: fadeIn 0.25s ease; }
+  .result-card.saved { border-color: rgba(0,204,106,0.35); }
+  .result-card.dup-email { border-left: 3px solid var(--yellow); }
+
+  .card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+  .company-name { font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+  .company-domain { font-family: var(--font-mono); font-size: 10px; color: var(--accent); margin-top: 2px; }
+  .company-meta { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 5px; }
+
+  .badge { font-family: var(--font-mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .badge-industry { background: rgba(123,97,255,0.12); border: 1px solid rgba(123,97,255,0.25); color: var(--accent2); }
+  .badge-size { background: rgba(0,204,106,0.1); border: 1px solid rgba(0,204,106,0.25); color: var(--green); }
+  .badge-role { background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); color: var(--accent); }
+  .badge-founded { background: rgba(255,209,102,0.08); border: 1px solid rgba(255,209,102,0.2); color: var(--yellow); }
+
+  .icp-score { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+  .icp-label { font-size: 9px; font-family: var(--font-mono); color: var(--muted); text-transform: uppercase; letter-spacing: 1px; flex-shrink: 0; width: 60px; }
+  .icp-bar { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .icp-fill { height: 100%; border-radius: 2px; }
+  .icp-value { font-family: var(--font-mono); font-size: 11px; font-weight: 500; flex-shrink: 0; width: 30px; text-align: right; }
+
+  .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .action-btn { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.15s; color: var(--text); }
+  .save-btn:hover { border-color: var(--green) !important; }
+  .ignore-btn:hover { border-color: var(--red) !important; }
+  .note-btn:hover { border-color: var(--yellow) !important; }
+
+  .note-area { margin-top: 10px; display: none; }
+  .note-area.visible { display: block; }
+  .note-area textarea { border-color: rgba(255,209,102,0.3); min-height: 50px; }
+
+  .contacts-section { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 8px; }
+  .contacts-label { font-size: 9px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 7px; display: flex; align-items: center; justify-content: space-between; }
+
+  .contact-row { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(128,128,128,0.08); gap: 8px; }
+  .contact-row:last-child { border-bottom: none; }
+  .contact-info { flex: 1; min-width: 0; }
+  .contact-name { font-size: 12px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-title { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-right { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+  .contact-email { font-family: var(--font-mono); font-size: 10px; color: var(--accent); max-width: 180px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .contact-email.not-found { color: var(--muted); font-style: italic; }
+  .contact-email.dup { color: var(--yellow); }
+  .email-status { font-size: 11px; flex-shrink: 0; }
+
+  .copy-btn { background: none; border: none; cursor: pointer; font-size: 11px; color: var(--muted); padding: 2px; border-radius: 3px; transition: color 0.15s; flex-shrink: 0; }
+  .copy-btn:hover { color: var(--accent); }
+  .copy-btn.copied { color: var(--green); }
+
+  .linkedin-btn { font-size: 10px; font-family: var(--font-mono); color: var(--accent2); text-decoration: none; padding: 2px 6px; border: 1px solid rgba(123,97,255,0.3); border-radius: 3px; flex-shrink: 0; }
+  .linkedin-btn:hover { background: rgba(123,97,255,0.1); }
+
+  .jobs-section { margin-top: 8px; }
+  .jobs-label { font-size: 9px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+  .job-tag { display: inline-flex; align-items: center; gap: 4px; background: rgba(0,229,255,0.06); border: 1px solid rgba(0,229,255,0.12); font-size: 10px; padding: 2px 7px; border-radius: 3px; margin: 2px; }
+  .job-date { color: var(--muted); font-family: var(--font-mono); font-size: 9px; }
+
+  /* ── Export bar ── */
+  .export-bar { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .export-info { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+  .export-btns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-export { background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 11px; font-family: var(--font-mono); padding: 7px 12px; border-radius: 6px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-export:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,229,255,0.05); }
+
+  /* ── Status ── */
+  .status-bar { background: var(--surface2); border: 1px solid var(--border); border-radius: 7px; padding: 9px 12px; margin-bottom: 10px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); display: none; }
+  .status-bar.visible { display: block; }
+  .status-bar.error { border-color: var(--red); color: var(--red); }
+  .status-bar.success { border-color: var(--green); color: var(--green); }
+
+  /* ── Instantly modal ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .modal-overlay.visible { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; width: 400px; max-width: 95vw; }
+  .modal-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; margin-bottom: 16px; }
+  .modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+  .modal-btn { flex: 1; padding: 10px; border-radius: 7px; font-family: var(--font-display); font-size: 13px; font-weight: 700; cursor: pointer; border: none; transition: all 0.2s; }
+  .modal-btn-primary { background: var(--accent); color: #000; }
+  .modal-btn-primary:hover { background: #33eeff; }
+  .modal-btn-cancel { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+
+  /* ── Instantly button ── */
+  .btn-instantly { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; border: none; border-radius: 6px; font-size: 11px; font-family: var(--font-mono); padding: 7px 12px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .btn-instantly:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+
+<!-- Instantly Modal -->
+<div class="modal-overlay" id="instantlyModal">
+  <div class="modal">
+    <div class="modal-title">📤 Push to Instantly</div>
+    <div class="field">
+      <label>Instantly API Key</label>
+      <input type="password" id="instantlyKey" placeholder="Your Instantly API key..." />
+    </div>
+    <div class="field">
+      <label>Campaign ID</label>
+      <input type="text" id="instantlyCampaign" placeholder="Campaign ID from Instantly..." />
+    </div>
+    <div class="field">
+      <label>Push</label>
+      <select id="instantlyMode">
+        <option value="all">All results</option>
+        <option value="saved">Saved only</option>
+      </select>
+    </div>
+    <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono);margin-top:8px">Only contacts with verified emails will be pushed.</div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeInstantly()">Cancel</button>
+      <button class="modal-btn modal-btn-primary" onclick="pushToInstantly()">Push Contacts</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Lead<span>Radar</span>
+      <small>v3</small>
+    </div>
+    <div class="header-right">
+      <div class="header-stats">
+        <div class="stat"><div class="stat-value" id="totalSeenCount">0</div><div class="stat-label">Seen</div></div>
+        <div class="stat"><div class="stat-value" id="totalSavedCount">0</div><div class="stat-label">Saved</div></div>
+        <div class="stat"><div class="stat-value" id="totalEmailCount">0</div><div class="stat-label">Emails</div></div>
+      </div>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Toggle theme">🌙</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- Left panel -->
+    <div class="panel">
+      <div class="panel-title">Configuration</div>
+
+      <div class="section-title" style="margin-top:0;padding-top:0;border-top:none">API</div>
+      <div class="field">
+        <label>Enrichlayer API Key</label>
+        <input type="password" id="apiKey" placeholder="Paste your API key..." />
+      </div>
+
+      <!-- Search history -->
+      <div class="section-title">Recent Searches</div>
+      <div class="history-list" id="historyList">
+        <div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">No recent searches yet</div>
+      </div>
+
+      <div class="section-title">Job Signal Targeting</div>
+      <div class="field">
+        <label>Job Titles to Search</label>
+        <div class="tags-input" id="jobTitlesContainer"><input type="text" id="jobTitleInput" placeholder="Type + Enter..." /></div>
+        <div class="hint">Press Enter to add each title</div>
+      </div>
+      <div class="field">
+        <label>Exclude Keywords</label>
+        <div class="tags-input" id="excludeContainer"><input type="text" id="excludeInput" placeholder="e.g. staffing, agency..." /></div>
+        <div class="hint">Companies matching these will be skipped</div>
+      </div>
+
+      <div class="section-title">Company Filters</div>
+      <div class="field">
+        <label>Industry</label>
+        <input type="text" id="industry" value="Software Development" />
+      </div>
+      <div class="field">
+        <label>Location</label>
+        <input type="text" id="location" value="United States" />
+      </div>
+      <div class="field">
+        <label>Company Size</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" value="1-10" class="size-check"> 1–10 employees</label>
+          <label><input type="checkbox" value="11-50" class="size-check" checked> 11–50 employees</label>
+          <label><input type="checkbox" value="51-200" class="size-check" checked> 51–200 employees</label>
+          <label><input type="checkbox" value="201-500" class="size-check"> 201–500 employees</label>
+          <label><input type="checkbox" value="501-1000" class="size-check"> 501–1,000 employees</label>
+          <label><input type="checkbox" value="1001+" class="size-check"> 1,000+ employees</label>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Founded After</label><input type="number" id="foundedAfter" value="1990" min="1900" max="2025" /></div>
+        <div class="field"><label>Founded Before</label><input type="number" id="foundedBefore" value="2018" min="1900" max="2025" /></div>
+      </div>
+      <div class="field">
+        <label>Job Posted Within</label>
+        <select id="postedWithin">
+          <option value="">Any time</option>
+          <option value="7" selected>Last 7 days</option>
+          <option value="14">Last 14 days</option>
+          <option value="30">Last 30 days</option>
+        </select>
+      </div>
+
+      <div class="section-title">Run Settings</div>
+      <div class="row">
+        <div class="field"><label>Max Companies</label>
+          <select id="maxResults"><option value="10">10</option><option value="25" selected>25</option><option value="50">50</option><option value="100">100</option></select>
+        </div>
+        <div class="field"><label>Contacts Each</label>
+          <select id="contactsPerCompany"><option value="1">1</option><option value="2">2</option><option value="3" selected>3</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Batch <span style="color:var(--accent);font-family:var(--font-mono)" id="batchLabel">#1</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="number" id="offsetInput" value="0" min="0" style="width:80px" readonly />
+          <span class="hint" style="margin:0">auto-increments each run</span>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div id="statusBar" class="status-bar"></div>
+
+      <!-- Progress -->
+      <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div class="progress-label" id="progressLabel">0 / 0</div>
+      </div>
+
+      <button class="btn" id="searchBtn" onclick="startSearch()"><span id="btnText">▶ Run Search</span></button>
+      <button class="btn btn-sm" onclick="resetBatch()">↺ Reset to Batch #1</button>
+      <button class="btn btn-danger" onclick="clearSeenCompanies()">🗑 Clear Seen History</button>
+    </div>
+
+    <!-- Right panel -->
+    <div class="results-panel">
+      <div class="results-header">
+        <div class="results-title">Results</div>
+        <div class="results-controls">
+          <div class="filter-tabs">
+            <button class="tab active" onclick="switchTab('all',this)">All</button>
+            <button class="tab" onclick="switchTab('saved',this)">⭐ Saved</button>
+          </div>
+          <select class="sort-select" id="sortSelect" onchange="sortResults()">
+            <option value="default">Sort: Default</option>
+            <option value="icp_desc">ICP Score ↓</option>
+            <option value="icp_asc">ICP Score ↑</option>
+            <option value="size_desc">Size ↓</option>
+            <option value="contacts_desc">Most Contacts</option>
+            <option value="emails_desc">Most Emails</option>
+          </select>
+        </div>
+        <div class="results-count" id="resultsCount">0 companies</div>
+      </div>
+
+      <div class="results-body">
+        <div id="emptyState" class="empty-state"><div class="empty-icon">◎</div><div class="empty-text">Configure filters and run search</div></div>
+        <div id="loadingState" style="display:none;padding:20px 0">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--muted);text-align:center;margin-bottom:12px" id="loadingText">Searching...</div>
+        </div>
+        <div id="resultsContainer" class="results-scroll" style="display:none"></div>
+      </div>
+
+      <div class="export-bar" id="exportBar" style="display:none">
+        <div class="export-info" id="exportInfo">Ready to export</div>
+        <div class="export-btns">
+          <button class="btn-export" onclick="exportCSV('all')">⬇ All CSV</button>
+          <button class="btn-export" onclick="exportCSV('saved')">⭐ Saved CSV</button>
+          <button class="btn-export" onclick="exportLinkedIn()">🔗 LinkedIn URLs</button>
+          <button class="btn-instantly" onclick="openInstantly()">📤 Push to Instantly</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────
+  const jobTitles = [];
+  const excludeKeywords = [];
+  let allResults = [];
+  let currentTab = 'all';
+  const C_GREEN='#00cc6a', C_YELLOW='#ffd166', C_RED='#ff4466';
+
+  // ── Theme ──────────────────────────────────────────────────
+  function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.dataset.theme === 'dark';
+    html.dataset.theme = isDark ? 'light' : 'dark';
+    document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+    localStorage.setItem('lr_theme', html.dataset.theme);
+  }
+  (function() {
+    const t = localStorage.getItem('lr_theme');
+    if (t) { document.documentElement.dataset.theme = t; document.getElementById('themeBtn').textContent = t==='light'?'🌙':'☀️'; }
+  })();
+
+  // ── LocalStorage ───────────────────────────────────────────
+  function ls(k,fb={}) { try{return JSON.parse(localStorage.getItem(k)||'null')||fb;}catch{return fb;} }
+  function lsSet(k,v) { localStorage.setItem(k,JSON.stringify(v)); }
+
+  function getSeenCompanies() { return ls('lr_seen',{}); }
+  function getSavedCompanies() { return ls('lr_saved',{}); }
+  function getNotes() { return ls('lr_notes',{}); }
+  function getHistory() { return ls('lr_history',[]); }
+
+  function markSeen(name) { const s=getSeenCompanies(); s[name.toLowerCase()]=Date.now(); lsSet('lr_seen',s); updateStats(); }
+  function isSeen(name) { return !!getSeenCompanies()[name.toLowerCase()]; }
+  function clearSeenCompanies() { if(!confirm('Clear all seen company history?'))return; localStorage.removeItem('lr_seen'); updateStats(); setStatus('Seen history cleared.','success'); }
+
+  function toggleSave(name) { const s=getSavedCompanies(); const k=name.toLowerCase(); if(s[k])delete s[k]; else s[k]=Date.now(); lsSet('lr_saved',s); updateStats(); return !!s[k]; }
+  function isSaved(name) { return !!getSavedCompanies()[name.toLowerCase()]; }
+
+  function saveNote(name,val) { const n=getNotes(); n[name.toLowerCase()]=val; lsSet('lr_notes',n); }
+  function getNote(name) { return getNotes()[name.toLowerCase()]||''; }
+
+  // ── Search history ─────────────────────────────────────────
+  function saveToHistory(query) {
+    let h = getHistory();
+    h = h.filter(x=>x.query!==query);
+    h.unshift({ query, date: new Date().toLocaleDateString(), ts: Date.now() });
+    h = h.slice(0,5);
+    lsSet('lr_history', h);
+    renderHistory();
+  }
+
+  function renderHistory() {
+    const h = getHistory();
+    const el = document.getElementById('historyList');
+    if (!h.length) { el.innerHTML='<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">No recent searches yet</div>'; return; }
+    el.innerHTML = h.map((item,i) => `
+      <div class="history-item" onclick="loadHistory(${i})">
+        <span class="history-item-text">${item.query}</span>
+        <span style="color:var(--muted);font-size:9px;margin:0 6px;flex-shrink:0">${item.date}</span>
+        <span class="history-del" onclick="event.stopPropagation();deleteHistory(${i})">×</span>
+      </div>`).join('');
+  }
+
+  function loadHistory(i) {
+    const h = getHistory();
+    const item = h[i];
+    if (!item) return;
+    // Parse and restore tags
+    const parts = item.query.split(' | ');
+    if (parts[0]) { jobTitles.length=0; parts[0].split(',').forEach(t=>t.trim()&&addTag(t.trim(),jobTitles,'jobTitlesContainer','jobTitleInput')); }
+    if (parts[1]) { document.getElementById('location').value=parts[1]; }
+    if (parts[2]) { document.getElementById('industry').value=parts[2]; }
+    setStatus('Search loaded from history.','success');
+  }
+
+  function deleteHistory(i) {
+    const h = getHistory();
+    h.splice(i,1);
+    lsSet('lr_history',h);
+    renderHistory();
+  }
+
+  // ── Stats ──────────────────────────────────────────────────
+  function updateStats() {
+    document.getElementById('totalSeenCount').textContent = Object.keys(getSeenCompanies()).length;
+    document.getElementById('totalSavedCount').textContent = Object.keys(getSavedCompanies()).length;
+    document.getElementById('totalEmailCount').textContent = allResults.reduce((a,c)=>a+c.contacts.filter(x=>x.email).length,0);
+  }
+
+  // ── Duplicate email detection ──────────────────────────────
+  function findDuplicateEmails(results) {
+    const emailCount = {};
+    results.forEach(c => c.contacts.forEach(p => { if(p.email) emailCount[p.email]=(emailCount[p.email]||0)+1; }));
+    return Object.keys(emailCount).filter(e=>emailCount[e]>1);
+  }
+
+  // ── Tags ───────────────────────────────────────────────────
+  const defaultTitles = [
+    'demand generation manager','VP demand generation','head of demand generation',
+    'lead generation manager','growth marketing manager','performance marketing manager',
+    'marketing manager','director of marketing','VP marketing','head of marketing','CMO',
+    'digital marketing manager','content marketing manager','inbound marketing manager',
+    'VP sales','head of sales','director of sales','sales manager',
+    'business development manager','head of business development','SDR manager','BDR manager',
+    'VP growth','head of growth','growth manager','revenue operations manager','chief revenue officer'
+  ];
+  const defaultExcludes = ['staffing','recruiting','agency','consulting','e-learning','media','edtech'];
+
+  defaultTitles.forEach(t=>addTag(t,jobTitles,'jobTitlesContainer','jobTitleInput'));
+  defaultExcludes.forEach(t=>addTag(t,excludeKeywords,'excludeContainer','excludeInput'));
+
+  function setupTagInput(inputId,arr,containerId) {
+    document.getElementById(inputId).addEventListener('keydown',function(e){
+      if(e.key==='Enter'&&this.value.trim()){addTag(this.value.trim(),arr,containerId,inputId);this.value='';e.preventDefault();}
+      if(e.key==='Backspace'&&!this.value&&arr.length>0)removeTag(arr.length-1,arr,containerId,inputId);
+    });
+    document.getElementById(containerId).addEventListener('click',()=>document.getElementById(inputId).focus());
+  }
+  setupTagInput('jobTitleInput',jobTitles,'jobTitlesContainer');
+  setupTagInput('excludeInput',excludeKeywords,'excludeContainer');
+
+  function addTag(text,arr,containerId,inputId){
+    if(!text||arr.includes(text))return;
+    arr.push(text);
+    renderTags(arr,containerId,inputId);
+  }
+  function removeTag(i,arr,containerId,inputId){arr.splice(i,1);renderTags(arr,containerId,inputId);}
+  function renderTags(arr,containerId,inputId){
+    const c=document.getElementById(containerId),inp=document.getElementById(inputId);
+    c.innerHTML='';
+    arr.forEach((t,i)=>{
+      const tag=document.createElement('div');tag.className='tag';
+      tag.innerHTML=`${t}<span class="tag-remove" onclick="removeTag(${i},${arr===jobTitles?'jobTitles':'excludeKeywords'},'${containerId}','${inputId}')">×</span>`;
+      c.appendChild(tag);
+    });
+    c.appendChild(inp);
+  }
+
+  // ── Batch ──────────────────────────────────────────────────
+  function updateBatchLabel(){
+    const o=parseInt(document.getElementById('offsetInput').value)||0;
+    const m=parseInt(document.getElementById('maxResults').value)||25;
+    document.getElementById('batchLabel').textContent='#'+(Math.floor(o/m)+1);
+  }
+  function resetBatch(){document.getElementById('offsetInput').value=0;updateBatchLabel();setStatus('Reset to Batch #1.','success');}
+  document.getElementById('maxResults').addEventListener('change',updateBatchLabel);
+
+  // ── Progress ───────────────────────────────────────────────
+  function setProgress(current,total,label){
+    const wrap=document.getElementById('progressWrap');
+    const fill=document.getElementById('progressFill');
+    const lbl=document.getElementById('progressLabel');
+    wrap.classList.add('visible');
+    fill.style.width=(total>0?(current/total*100):0)+'%';
+    lbl.textContent=label||`${current} / ${total}`;
+  }
+  function hideProgress(){document.getElementById('progressWrap').classList.remove('visible');}
+
+  // ── UI helpers ─────────────────────────────────────────────
+  function setStatus(msg,type=''){const b=document.getElementById('statusBar');b.textContent=msg;b.className='status-bar visible '+type;}
+  function clearStatus(){document.getElementById('statusBar').className='status-bar';}
+
+  function showResults(){
+    document.getElementById('loadingState').style.display='none';
+    document.getElementById('resultsContainer').style.display='block';
+    document.getElementById('exportBar').style.display='flex';
+  }
+
+  function switchTab(tab,el){
+    currentTab=tab;
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+    document.querySelectorAll('.result-card').forEach(card=>{
+      card.style.display=(tab==='saved'&&!isSaved(card.dataset.company))?'none':'block';
+    });
+    updateVisibleCount();
+  }
+
+  function updateVisibleCount(){
+    const n=document.querySelectorAll('.result-card:not([style*="display: none"])').length;
+    document.getElementById('resultsCount').textContent=n+' companies';
+  }
+
+  // ── Sort ───────────────────────────────────────────────────
+  function sortResults(){
+    const mode=document.getElementById('sortSelect').value;
+    const container=document.getElementById('resultsContainer');
+    const cards=[...container.querySelectorAll('.result-card')];
+
+    cards.sort((a,b)=>{
+      const ca=allResults.find(r=>r.name===a.dataset.company);
+      const cb=allResults.find(r=>r.name===b.dataset.company);
+      if(!ca||!cb)return 0;
+      if(mode==='icp_desc')return (cb.icpScore||0)-(ca.icpScore||0);
+      if(mode==='icp_asc')return (ca.icpScore||0)-(cb.icpScore||0);
+      if(mode==='contacts_desc')return cb.contacts.length-ca.contacts.length;
+      if(mode==='emails_desc')return cb.contacts.filter(x=>x.email).length-ca.contacts.filter(x=>x.email).length;
+      if(mode==='size_desc'){
+        const sizeVal=s=>{if(!s)return 0;const m=s.match(/(\d+)/);return m?parseInt(m[1]):0;};
+        return sizeVal(cb.size)-sizeVal(ca.size);
+      }
+      return 0;
+    });
+
+    cards.forEach(c=>container.appendChild(c));
+  }
+
+  // ── ICP Score ──────────────────────────────────────────────
+  function scoreICP(company){
+    const d=(company.description||'').toLowerCase();
+    const ind=(company.industry||'').toLowerCase();
+    let s=5;
+    if(/software|saas|platform|enterprise|solution/.test(d))s+=1;
+    if(/b2b|enterprise|corporate|organization/.test(d))s+=1;
+    if(/governance|compliance|workflow|automation|bpm|erp/.test(d))s+=1;
+    if(/software development|information technology/.test(ind))s+=0.5;
+    if(/founded|established|since \d{4}/.test(d))s+=0.5;
+    if(/staffing|recruiting|agency|e-learning|edtech|food|retail|consumer/.test(d))s-=3;
+    if(/open source|devtool|developer tool/.test(d))s-=2;
+    if(/startup|seed stage|pre-seed/.test(d))s-=1;
+    return Math.min(10,Math.max(1,Math.round(s)));
+  }
+  function scoreColor(s){return s>=8?C_GREEN:s>=6?C_YELLOW:C_RED;}
+
+  function daysAgo(ds){
+    if(!ds)return null;
+    const d=Math.floor((Date.now()-new Date(ds).getTime())/86400000);
+    return d===0?'today':d===1?'1d ago':d<30?d+'d ago':null;
+  }
+
+  // ── Filters persistence ────────────────────────────────────
+  function saveFilters(){
+    lsSet('lr_filters',{
+      industry:document.getElementById('industry').value,
+      location:document.getElementById('location').value,
+      foundedAfter:document.getElementById('foundedAfter').value,
+      foundedBefore:document.getElementById('foundedBefore').value,
+      postedWithin:document.getElementById('postedWithin').value,
+      maxResults:document.getElementById('maxResults').value,
+      contactsPerCompany:document.getElementById('contactsPerCompany').value,
+      sizes:Array.from(document.querySelectorAll('.size-check:checked')).map(c=>c.value)
+    });
+  }
+
+  function loadFilters(){
+    const f=ls('lr_filters',null);
+    if(!f)return;
+    if(f.industry)document.getElementById('industry').value=f.industry;
+    if(f.location)document.getElementById('location').value=f.location;
+    if(f.foundedAfter)document.getElementById('foundedAfter').value=f.foundedAfter;
+    if(f.foundedBefore)document.getElementById('foundedBefore').value=f.foundedBefore;
+    if(f.postedWithin)document.getElementById('postedWithin').value=f.postedWithin;
+    if(f.maxResults)document.getElementById('maxResults').value=f.maxResults;
+    if(f.contactsPerCompany)document.getElementById('contactsPerCompany').value=f.contactsPerCompany;
+    if(f.sizes){
+      document.querySelectorAll('.size-check').forEach(c=>{ c.checked=f.sizes.includes(c.value); });
+    }
+  }
+
+  // ── Main Search ────────────────────────────────────────────
+  async function startSearch(){
+    const apiKey=document.getElementById('apiKey').value.trim();
+    if(!apiKey){setStatus('Please enter your Enrichlayer API key','error');return;}
+    if(!jobTitles.length){setStatus('Please add at least one job title','error');return;}
+    const sizes=Array.from(document.querySelectorAll('.size-check:checked')).map(c=>c.value);
+    if(!sizes.length){setStatus('Please select at least one company size','error');return;}
+
+    clearStatus();
+    hideProgress();
+    allResults=[];
+    document.getElementById('resultsContainer').innerHTML='';
+
+    const btn=document.getElementById('searchBtn');
+    btn.disabled=true;
+    document.getElementById('btnText').textContent='⏳ Searching...';
+    document.getElementById('resultsCount').textContent='0 companies';
+
+    const maxResults=parseInt(document.getElementById('maxResults').value)||25;
+    const contactsPerCompany=parseInt(document.getElementById('contactsPerCompany').value)||3;
+    const offset=parseInt(document.getElementById('offsetInput').value)||0;
+    const location=document.getElementById('location').value.trim();
+    const industry=document.getElementById('industry').value.trim();
+    const foundedBefore=parseInt(document.getElementById('foundedBefore').value)||null;
+    const foundedAfter=parseInt(document.getElementById('foundedAfter').value)||null;
+    const postedWithin=document.getElementById('postedWithin').value;
+
+    // Save filters for next time
+    saveFilters();
+
+    // Save to history
+    const historyQuery=`${jobTitles.slice(0,3).join(',')} | ${location} | ${industry}`;
+    saveToHistory(historyQuery);
+
+    try {
+      document.getElementById('emptyState').style.display='none';
+      document.getElementById('loadingState').style.display='block';
+      document.getElementById('loadingText').textContent='Searching for companies with matching job openings...';
+
+      const jobQuery=jobTitles.join(' OR ');
+      let url=`https://enrichlayer.com/api/v2/jobs/search?keyword=${encodeURIComponent(jobQuery)}&location=${encodeURIComponent(location)}&count=${maxResults*3}&start=${offset}&company_size=${encodeURIComponent(sizes.join(','))}`;
+      if(postedWithin)url+=`&posted_within=${postedWithin}`;
+
+      const res=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,apiKey})});
+      if(!res.ok){const e=await res.json().catch(()=>{});throw new Error(e?.message||`API error ${res.status}`);}
+
+      const data=await res.json();
+      const jobs=data.jobs||data.data||(Array.isArray(data)?data:[]);
+
+      if(!jobs.length){
+        setStatus('No jobs found. Try different keywords, location, or a wider date range.','error');
+        document.getElementById('loadingState').style.display='none';
+        document.getElementById('emptyState').style.display='flex';
+        btn.disabled=false;document.getElementById('btnText').textContent='▶ Run Search';return;
+      }
+
+      const map={};
+      for(const job of jobs){
+        const name=job.company||job.company_name||'';
+        if(!name)continue;
+        if(isSeen(name))continue;
+        const descLower=(job.company_description||name).toLowerCase();
+        if(excludeKeywords.some(kw=>descLower.includes(kw.toLowerCase())))continue;
+        if(!map[name]){
+          map[name]={name,domain:job.company_domain||'',linkedin_url:job.company_url||job.company_linkedin_url||'',
+            description:job.company_description||'',industry:job.industry||industry,size:job.company_size||'',
+            founded:job.company_founded||null,jobs:[],contacts:[]};
+        }
+        map[name].jobs.push({title:job.title||job.job_title||'',date:job.list_date||job.posted_date||''});
+      }
+
+      let companies=Object.values(map);
+      if(foundedBefore||foundedAfter){
+        companies=companies.filter(c=>{
+          if(!c.founded)return true;
+          const yr=parseInt(c.founded);
+          if(foundedBefore&&yr>foundedBefore)return false;
+          if(foundedAfter&&yr<foundedAfter)return false;
+          return true;
+        });
+      }
+      companies=companies.slice(0,maxResults);
+
+      if(!companies.length){
+        setStatus('All results filtered out. Try resetting batch or adjusting filters.','error');
+        document.getElementById('loadingState').style.display='none';
+        document.getElementById('emptyState').style.display='flex';
+        btn.disabled=false;document.getElementById('btnText').textContent='▶ Run Search';return;
+      }
+
+      const container=document.getElementById('resultsContainer');
+      document.getElementById('loadingState').style.display='none';
+      showResults();
+
+      for(let i=0;i<companies.length;i++){
+        const company=companies[i];
+        setProgress(i,companies.length,`Enriching ${i+1}/${companies.length}: ${company.name}...`);
+
+        try{
+          const cParam=company.linkedin_url?`linkedin_url=${encodeURIComponent(company.linkedin_url)}`:`name=${encodeURIComponent(company.name)}`;
+          const cRes=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:`https://enrichlayer.com/api/v2/companies?${cParam}`,apiKey})}).catch(()=>null);
+          if(cRes?.ok){
+            const cd=await cRes.json();
+            company.domain=(cd.website_url||cd.domain||company.domain||'').replace(/^https?:\/\//,'').replace(/\/$/,'');
+            company.size=company.size||cd.company_size_range||'';
+            company.industry=company.industry||cd.industry||'';
+            company.founded=company.founded||cd.founded_year||null;
+            company.description=company.description||cd.description||'';
+            company.company_linkedin=cd.linkedin_url||'';
+          }
+
+          const jobsText=company.jobs.map(j=>j.title).join(' ').toLowerCase();
+          const isMkt=/marketing|demand|lead gen|growth|digital|acquisition|content|brand/.test(jobsText);
+          const isSls=/sales|business dev|bdr|sdr|account exec|revenue|outbound/.test(jobsText);
+          const isGrw=/growth|expansion/.test(jobsText);
+          company.targetRoles=[isMkt&&'Marketing',isSls&&'Sales',isGrw&&'Growth'].filter(Boolean).join(' + ')||'General';
+
+          if(company.domain||company.linkedin_url){
+            const pParam=company.domain?`company_domain=${encodeURIComponent(company.domain)}`:`company_linkedin_url=${encodeURIComponent(company.linkedin_url)}`;
+            const titlePool=['CEO','Founder','Co-Founder','Managing Director'];
+            if(isMkt)titlePool.push('CMO','Chief Marketing Officer','VP Marketing','Head of Marketing','Director of Marketing','VP Demand Generation');
+            if(isSls)titlePool.push('CSO','Chief Sales Officer','Chief Revenue Officer','VP Sales','Head of Sales','Director of Sales');
+            if(isGrw)titlePool.push('Chief Growth Officer','VP Growth','Head of Growth');
+            if(!isMkt&&!isSls)titlePool.push('CMO','VP Marketing','VP Sales','Head of Marketing','Head of Sales');
+
+            const pRes=await fetch('/api/proxy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:`https://enrichlayer.com/api/v2/people/search?${pParam}&title_keywords=${encodeURIComponent(titlePool.slice(0,10).join(','))}&count=10`,apiKey})}).catch(()=>null);
+            if(pRes?.ok){
+              const pd=await pRes.json();
+              const people=Array.isArray(pd)?pd:(pd.results||pd.people||[]);
+              const scored=people.map(p=>{
+                const t=(p.occupation||p.title||'').toLowerCase();
+                let score=0;
+                if(/ceo|chief executive|founder|co-founder|managing director|owner/.test(t))score=1000;
+                else if(isMkt&&/cmo|chief marketing/.test(t))score=900;
+                else if(isSls&&/cso|chief sales|chief revenue|cro/.test(t))score=900;
+                else if(isMkt&&/vp.{0,5}market|head of market|vp.{0,5}demand/.test(t))score=800;
+                else if(isSls&&/vp.{0,5}sales|head of sales|vp.{0,5}business/.test(t))score=800;
+                else if(isGrw&&/vp.{0,5}growth|head of growth/.test(t))score=800;
+                else if(/director.{0,10}(market|sales)/.test(t))score=700;
+                else if(/cmo|chief marketing|vp market|head of market/.test(t))score=500;
+                else if(/cso|vp sales|head of sales|chief revenue/.test(t))score=500;
+                else if(/vp growth|head of growth/.test(t))score=500;
+                else if(/market|demand|growth/.test(t))score=300;
+                else if(/sales|business dev|revenue/.test(t))score=300;
+                return{p,score};
+              }).sort((a,b)=>b.score-a.score);
+
+              const ceo=scored.find(s=>s.score===1000);
+              const others=scored.filter(s=>s!==ceo&&s.score>0).slice(0,contactsPerCompany-(ceo?1:0));
+              const final=ceo?[ceo.p]:[];
+              others.forEach(s=>final.push(s.p));
+              if(final.length<contactsPerCompany)scored.filter(s=>!final.includes(s.p)).slice(0,contactsPerCompany-final.length).forEach(s=>final.push(s.p));
+
+              for(const person of final.slice(0,contactsPerCompany)){
+                const email=person.work_email||person.email||'';
+                company.contacts.push({name:person.full_name||`${person.first_name||''} ${person.last_name||''}`.trim(),title:person.occupation||person.title||'',email,emailVerified:!!person.work_email,linkedin:person.linkedin_url||person.profile_url||''});
+              }
+            }
+          }
+        }catch(e){console.warn('Enrichment error:',company.name,e);}
+
+        company.icpScore=scoreICP(company);
+        markSeen(company.name);
+        allResults.push(company);
+
+        // Check for duplicate emails
+        const dupEmails=findDuplicateEmails(allResults);
+        renderCard(company,container,dupEmails);
+        document.getElementById('resultsCount').textContent=allResults.length+' companies';
+        updateStats();
+
+        await new Promise(r=>setTimeout(r,300));
+      }
+
+      setProgress(companies.length,companies.length,'Done!');
+      setTimeout(hideProgress,2000);
+
+      const newOffset=offset+maxResults;
+      document.getElementById('offsetInput').value=newOffset;
+      updateBatchLabel();
+
+      const emails=allResults.reduce((a,c)=>a+c.contacts.filter(x=>x.email).length,0);
+      const dupEmails=findDuplicateEmails(allResults);
+      setStatus(`✓ Done! ${allResults.length} companies, ${emails} emails found${dupEmails.length?`, ${dupEmails.length} duplicate emails flagged`:''}.`,'success');
+      document.getElementById('exportInfo').textContent=`${allResults.length} companies · ${emails} emails`;
+      updateStats();
+
+    }catch(err){
+      document.getElementById('loadingState').style.display='none';
+      document.getElementById('emptyState').style.display='flex';
+      hideProgress();
+      setStatus('Error: '+err.message,'error');
+      console.error(err);
+    }finally{
+      btn.disabled=false;
+      document.getElementById('btnText').textContent='▶ Run Search';
+    }
+  }
+
+  // ── Render card ────────────────────────────────────────────
+  function renderCard(company,container,dupEmails=[]){
+    const card=document.createElement('div');
+    const hasDup=company.contacts.some(c=>c.email&&dupEmails.includes(c.email));
+    card.className='result-card'+(isSaved(company.name)?' saved':'')+(hasDup?' dup-email':'');
+    card.dataset.company=company.name;
+
+    const score=company.icpScore||5;
+    const sc=scoreColor(score);
+    const jobsHtml=company.jobs.slice(0,3).map(j=>{const ago=daysAgo(j.date);return`<span class="job-tag">${j.title}${ago?` <span class="job-date">${ago}</span>`:''}</span>`;}).join('');
+
+    const contactsHtml=company.contacts.length>0
+      ?company.contacts.map(c=>{
+        const isDup=c.email&&dupEmails.includes(c.email);
+        return`<div class="contact-row">
+          <div class="contact-info"><div class="contact-name">${c.name||'—'}</div><div class="contact-title">${c.title||''}</div></div>
+          <div class="contact-right">
+            <div class="contact-email${c.email?'':' not-found'}${isDup?' dup':''}" title="${isDup?'Duplicate email across companies':''}">${c.email||'not found'}${isDup?' ⚠️':''}</div>
+            <div class="email-status">${c.email?(c.emailVerified?'✅':'🔵'):'⚪'}</div>
+            ${c.email?`<button class="copy-btn" onclick="copyEmail(this,'${c.email}')" title="Copy email">📋</button>`:''}
+            ${c.linkedin?`<a class="linkedin-btn" href="${c.linkedin}" target="_blank">LI</a>`:''}
+          </div>
+        </div>`;
+      }).join('')
+      :'<div style="font-size:11px;color:var(--muted);font-family:var(--font-mono)">No contacts found</div>';
+
+    const noteId='note-'+company.name.replace(/[^a-z0-9]/gi,'_');
+    const safeName=company.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+
+    card.innerHTML=`
+      <div class="card-header">
+        <div style="flex:1;min-width:0">
+          <div class="company-name">${company.name}</div>
+          <div class="company-domain">${company.domain||'domain unknown'}${company.company_linkedin?` · <a href="${company.company_linkedin}" target="_blank" style="color:var(--accent2);text-decoration:none;font-size:10px">Company LI</a>`:''}</div>
+          <div class="company-meta">
+            ${company.industry?`<span class="badge badge-industry">${company.industry}</span>`:''}
+            ${company.size?`<span class="badge badge-size">${company.size}</span>`:''}
+            ${company.founded?`<span class="badge badge-founded">Est. ${company.founded}</span>`:''}
+            ${company.targetRoles?`<span class="badge badge-role">${company.targetRoles}</span>`:''}
+            ${hasDup?`<span class="badge" style="background:rgba(255,209,102,0.1);border:1px solid rgba(255,209,102,0.3);color:var(--yellow)">⚠ DUP EMAIL</span>`:''}
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="action-btn note-btn" title="Note" onclick="toggleNote('${noteId}')">📝</button>
+          <button class="action-btn save-btn" title="Save" id="save-${noteId}" onclick="toggleSaveCard('${safeName}','save-${noteId}',this.closest('.result-card'))">${isSaved(company.name)?'⭐':'☆'}</button>
+          <button class="action-btn ignore-btn" title="Ignore" onclick="this.closest('.result-card').style.display='none';updateVisibleCount()">✕</button>
+        </div>
+      </div>
+      <div class="icp-score">
+        <div class="icp-label">ICP Match</div>
+        <div class="icp-bar"><div class="icp-fill" style="width:${score*10}%;background:${sc}"></div></div>
+        <div class="icp-value" style="color:${sc}">${score}/10</div>
+      </div>
+      ${company.jobs.length?`<div class="jobs-section"><div class="jobs-label">Matching Jobs</div>${jobsHtml}</div>`:''}
+      <div class="contacts-section">
+        <div class="contacts-label">
+          <span>Contacts</span>
+          <span style="font-weight:400;color:var(--muted)">✅ verified &nbsp;🔵 found &nbsp;⚪ not found</span>
+        </div>
+        ${contactsHtml}
+      </div>
+      <div class="note-area" id="${noteId}">
+        <textarea placeholder="Add your notes..." onchange="saveNote('${safeName}',this.value)">${getNote(company.name)}</textarea>
+      </div>`;
+
+    container.appendChild(card);
+  }
+
+  // ── Card actions ───────────────────────────────────────────
+  function toggleNote(id){const el=document.getElementById(id);el.classList.toggle('visible');if(el.classList.contains('visible'))el.querySelector('textarea').focus();}
+
+  function toggleSaveCard(name,btnId,card){
+    const saved=toggleSave(name);
+    document.getElementById(btnId).textContent=saved?'⭐':'☆';
+    if(saved)card.classList.add('saved');else card.classList.remove('saved');
+    if(currentTab==='saved'&&!saved)card.style.display='none';
+    updateVisibleCount();
+  }
+
+  function copyEmail(btn,email){
+    navigator.clipboard.writeText(email).then(()=>{
+      btn.textContent='✓';btn.classList.add('copied');
+      setTimeout(()=>{btn.textContent='📋';btn.classList.remove('copied');},2000);
+    });
+  }
+
+  // ── Export ─────────────────────────────────────────────────
+  function exportCSV(mode){
+    const toExport=mode==='saved'?allResults.filter(c=>isSaved(c.name)):allResults;
+    if(!toExport.length){alert('No companies to export.');return;}
+    const headers=['Company','Company LinkedIn','Domain','Industry','Size','Founded','ICP Score','Target Roles','Matching Jobs',
+      'Contact 1 Name','Contact 1 Title','Contact 1 Email','Contact 1 Verified','Contact 1 LinkedIn',
+      'Contact 2 Name','Contact 2 Title','Contact 2 Email','Contact 2 Verified','Contact 2 LinkedIn',
+      'Contact 3 Name','Contact 3 Title','Contact 3 Email','Contact 3 Verified','Contact 3 LinkedIn','Notes'];
+    const rows=[headers];
+    for(const c of toExport){
+      const cx=[0,1,2].map(i=>c.contacts[i]||{name:'',title:'',email:'',emailVerified:false,linkedin:''});
+      rows.push([c.name,c.company_linkedin||'',c.domain,c.industry,c.size,c.founded||'',c.icpScore||'',c.targetRoles,c.jobs.slice(0,3).map(j=>j.title).join(' | '),
+        cx[0].name,cx[0].title,cx[0].email,cx[0].emailVerified?'Yes':'',cx[0].linkedin,
+        cx[1].name,cx[1].title,cx[1].email,cx[1].emailVerified?'Yes':'',cx[1].linkedin,
+        cx[2].name,cx[2].title,cx[2].email,cx[2].emailVerified?'Yes':'',cx[2].linkedin,
+        getNote(c.name)]);
+    }
+    downloadCSV(rows,`leadradar_${mode}_${new Date().toISOString().slice(0,10)}.csv`);
+  }
+
+  function exportLinkedIn(){
+    const urls=[];
+    allResults.forEach(c=>{c.contacts.forEach(p=>{if(p.linkedin)urls.push(`${c.name} - ${p.name} (${p.title}): ${p.linkedin}`);});});
+    if(!urls.length){alert('No LinkedIn URLs found.');return;}
+    const blob=new Blob([urls.join('\n')],{type:'text/plain'});
+    const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(blob),download:`leadradar_linkedin_${new Date().toISOString().slice(0,10)}.txt`});
+    a.click();
+  }
+
+  function downloadCSV(rows,filename){
+    const csv=rows.map(r=>r.map(v=>`"${String(v||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const a=Object.assign(document.createElement('a'),{href:URL.createObjectURL(new Blob([csv],{type:'text/csv'})),download:filename});
+    a.click();
+  }
+
+  // ── Instantly integration ──────────────────────────────────
+  function openInstantly(){document.getElementById('instantlyModal').classList.add('visible');}
+  function closeInstantly(){document.getElementById('instantlyModal').classList.remove('visible');}
+
+  async function pushToInstantly(){
+    const apiKey=document.getElementById('instantlyKey').value.trim();
+    const campaignId=document.getElementById('instantlyCampaign').value.trim();
+    const mode=document.getElementById('instantlyMode').value;
+    if(!apiKey||!campaignId){alert('Please enter your Instantly API key and Campaign ID.');return;}
+
+    const toExport=mode==='saved'?allResults.filter(c=>isSaved(c.name)):allResults;
+    const leads=[];
+    toExport.forEach(c=>{
+      c.contacts.filter(p=>p.email&&p.emailVerified).forEach(p=>{
+        leads.push({email:p.email,first_name:p.name.split(' ')[0]||'',last_name:p.name.split(' ').slice(1).join(' ')||'',company_name:c.name,personalization:`Works at ${c.name} as ${p.title}`});
+      });
+    });
+
+    if(!leads.length){alert('No verified emails to push. Try running a search first.');closeInstantly();return;}
+
+    try{
+      const res=await fetch('/api/instantly',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({apiKey,campaignId,leads})
+      });
+      if(!res.ok)throw new Error(`Instantly error ${res.status}`);
+      closeInstantly();
+      setStatus(`✓ Pushed ${leads.length} verified contacts to Instantly campaign.`,'success');
+    }catch(e){
+      alert('Error pushing to Instantly: '+e.message);
+    }
+  }
+
+  // ── Init ───────────────────────────────────────────────────
+  loadFilters();
+  renderHistory();
+  updateStats();
+  updateBatchLabel();
+</script>
+</body>
+</html>
