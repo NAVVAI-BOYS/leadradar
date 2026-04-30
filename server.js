@@ -36,6 +36,7 @@ app.post('/api/jobs', async (req, res) => {
   };
 
   try {
+    console.log('Theirstack request:', JSON.stringify(body));
     const response = await fetch('https://api.theirstack.com/v1/jobs/search', {
       method: 'POST',
       headers: {
@@ -44,9 +45,13 @@ app.post('/api/jobs', async (req, res) => {
       },
       body: JSON.stringify(body)
     });
-    const data = await response.json();
+    const text = await response.text();
+    console.log('Theirstack response status:', response.status, text.slice(0, 200));
+    let data;
+    try { data = JSON.parse(text); } catch(e) { data = { error: text }; }
     res.status(response.status).json(data);
   } catch (err) {
+    console.error('Theirstack error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
