@@ -21,17 +21,29 @@ async function apiFetch(url, apiKey) {
   return res;
 }
 
-// Search for jobs by keyword — returns list of companies hiring
+// Search for jobs using Theirstack — searches millions of postings across all companies
 app.post('/api/jobs', async (req, res) => {
-  const { apiKey, keyword, when, count } = req.body;
-  if (!apiKey) return res.status(400).json({ error: 'Missing apiKey' });
+  const { tsApiKey, titles, postedDays, count, page } = req.body;
+  if (!tsApiKey) return res.status(400).json({ error: 'Missing Theirstack API key' });
 
-  const whenMap = { '7': 'past-week', '14': 'past-2-weeks', '30': 'past-month' };
-  let url = `https://enrichlayer.com/api/v2/company/job?keyword=${encodeURIComponent(keyword)}&count=${count || 50}`;
-  if (when && whenMap[when]) url += `&when=${whenMap[when]}`;
+  const body = {
+    job_title_or: titles || [],
+    job_country_code_or: ['US', 'CA'],
+    posted_at_max_age_days: parseInt(postedDays) || 7,
+    limit: count || 50,
+    page: page || 0,
+    order_by: [{ field: 'discovered_at', desc: true }]
+  };
 
   try {
-    const response = await apiFetch(url, apiKey);
+    const response = await fetch('https://api.theirstack.com/v1/jobs/search', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${tsApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (err) {
