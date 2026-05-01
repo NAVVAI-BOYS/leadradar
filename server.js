@@ -38,11 +38,12 @@ app.post('/api/jobs', async (req, res) => {
 
   const body = {
     job_title_or: titles || [],
-    job_country_code_or: ['US', 'CA'],
-    posted_at_max_age_days: parseInt(postedDays) || 7,
+    job_location_or: [{ id: 6252001 }], // 6252001 = United States
+    posted_at_max_age_days: parseInt(postedDays) || 15,
+    blur_company_data: false,
+    include_total_results: false,
     limit: count || 50,
-    page: page || 0,
-    order_by: [{ field: 'discovered_at', desc: true }]
+    page: page || 0
   };
 
   try {
