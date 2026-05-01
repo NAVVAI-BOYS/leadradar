@@ -6,7 +6,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
-const publicPath = path.join(__dirname, 'public');
+const publicPath = path.join(process.cwd(), 'public');
+console.log('CWD:', process.cwd());
 console.log('Serving static files from:', publicPath);
 app.use(express.static(publicPath));
 
@@ -104,7 +105,7 @@ app.post('/api/test', async (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  const indexPath = path.join(__dirname, 'public', 'index.html');
+  const indexPath = path.join(process.cwd(), 'public', 'index.html');
   console.log('Serving index from:', indexPath);
   res.sendFile(indexPath);
 });
