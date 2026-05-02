@@ -7,16 +7,10 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 const fs = require('fs');
-// Try multiple possible locations for the public folder
-const possiblePaths = [
-  path.join(process.cwd(), 'public'),
-  path.join(process.cwd(), '..', 'public'),
-  path.join(__dirname, 'public'),
-  path.join(__dirname, '..', 'public'),
-];
-const publicPath = possiblePaths.find(p => fs.existsSync(p)) || possiblePaths[0];
 console.log('CWD:', process.cwd());
 console.log('__dirname:', __dirname);
+// public folder is inside src on Render (/opt/render/project/src/public)
+const publicPath = path.join(__dirname, 'public');
 console.log('Using public path:', publicPath);
 app.use(express.static(publicPath));
 
@@ -36,10 +30,6 @@ app.post('/api/jobs', async (req, res) => {
   const { tsApiKey, titles, postedDays, count, page } = req.body;
   if (!tsApiKey) return res.status(400).json({ error: 'Missing Theirstack API key' });
 
-  // Companies must be 15+ years old
-  const currentYear = new Date().getFullYear();
-  const foundedBefore = currentYear - 15; // founded before 2011
-
   const body = {
     job_title_or: titles || [],
     job_location_or: [{ id: 6252001 }], // United States
@@ -53,8 +43,8 @@ app.post('/api/jobs', async (req, res) => {
     min_employee_count: 20,
     max_employee_count: 200,
 
-    // ── Established companies only: founded 15+ years ago ───
-    company_founded_at_max: foundedBefore,
+    // Note: Theirstack doesn't support founded year filter directly
+    // We handle age filtering on the frontend based on company data returned
 
     // ── Tech/SaaS/B2B software industries only ───────────────
     company_industry_or: [
@@ -193,7 +183,7 @@ app.post('/api/test', async (req, res) => {
 });
 
 app.get('*', (req, res) => {
-  const indexPath = path.join(publicPath, 'index.html');
+  const indexPath = path.join(__dirname, 'public', 'index.html');
   console.log('Serving index from:', indexPath);
   res.sendFile(indexPath);
 });
