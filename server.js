@@ -46,21 +46,22 @@ app.post('/api/jobs', async (req, res) => {
     // Note: Theirstack doesn't support founded year filter directly
     // We handle age filtering on the frontend based on company data returned
 
-    // ── Tech/SaaS/B2B software industries only ───────────────
+    // ── Industry filters using exact Theirstack industry names ──
     company_industry_or: [
-      "Software Development",
       "Technology, Information and Internet",
+      "Technology, Information and Media",
+      "Software Development",
       "IT Services and IT Consulting",
       "Computer and Network Security",
-      "Data Infrastructure and Analytics"
+      "Data Infrastructure and Analytics",
+      "Internet Marketplace Platforms"
     ],
 
-    // ── Exclude irrelevant industries ────────────────────────
     company_industry_not: [
       "Staffing and Recruiting",
       "Human Resources Services",
       "E-Learning Providers",
-      "Online Media",
+      "Online Audio and Video Media",
       "Advertising Services",
       "Entertainment Providers",
       "Retail",
@@ -72,7 +73,10 @@ app.post('/api/jobs', async (req, res) => {
       "Construction",
       "Transportation, Logistics, Supply Chain and Storage",
       "Manufacturing",
-      "Oil, Gas, and Mining"
+      "Oil, Gas, and Mining",
+      "Biotechnology Research",
+      "Nanotechnology Research",
+      "Space Research and Technology"
     ],
 
     // ── Exclude known large enterprises ─────────────────────
