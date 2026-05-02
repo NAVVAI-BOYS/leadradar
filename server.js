@@ -46,37 +46,17 @@ app.post('/api/jobs', async (req, res) => {
     // Note: Theirstack doesn't support founded year filter directly
     // We handle age filtering on the frontend based on company data returned
 
-    // ── Industry filters using exact Theirstack industry names ──
-    company_industry_or: [
-      "Technology, Information and Internet",
-      "Technology, Information and Media",
-      "Software Development",
-      "IT Services and IT Consulting",
-      "Computer and Network Security",
-      "Data Infrastructure and Analytics",
-      "Internet Marketplace Platforms"
+    // ── Job description must contain B2B software signals ──
+    job_description_pattern_or: [
+      "enterprise", "B2B", "SaaS", "software platform", "business software",
+      "workflow", "compliance", "governance", "automation", "cloud platform",
+      "ERP", "CRM", "data management", "business process"
     ],
 
-    company_industry_not: [
-      "Staffing and Recruiting",
-      "Human Resources Services",
-      "E-Learning Providers",
-      "Online Audio and Video Media",
-      "Advertising Services",
-      "Entertainment Providers",
-      "Retail",
-      "Food and Beverage Services",
-      "Hospitals and Health Care",
-      "Insurance",
-      "Financial Services",
-      "Real Estate",
-      "Construction",
-      "Transportation, Logistics, Supply Chain and Storage",
-      "Manufacturing",
-      "Oil, Gas, and Mining",
-      "Biotechnology Research",
-      "Nanotechnology Research",
-      "Space Research and Technology"
+    // ── Exclude irrelevant job descriptions ─────────────────
+    job_description_pattern_not: [
+      "staffing agency", "recruiting firm", "e-learning", "food delivery",
+      "restaurant", "retail store", "social network", "consumer app"
     ],
 
     // ── Exclude known large enterprises ─────────────────────
