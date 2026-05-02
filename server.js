@@ -42,7 +42,7 @@ app.post('/api/jobs', async (req, res) => {
     posted_at_max_age_days: parseInt(postedDays) || 15,
     blur_company_data: false,
     include_total_results: false,
-    limit: count || 50,
+    limit: Math.min(count || 25, 25), // Free plan capped at 25 per page
     page: page || 0
   };
 
