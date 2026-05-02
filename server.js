@@ -36,14 +36,88 @@ app.post('/api/jobs', async (req, res) => {
   const { tsApiKey, titles, postedDays, count, page } = req.body;
   if (!tsApiKey) return res.status(400).json({ error: 'Missing Theirstack API key' });
 
+  // Companies must be 15+ years old
+  const currentYear = new Date().getFullYear();
+  const foundedBefore = currentYear - 15; // founded before 2011
+
   const body = {
     job_title_or: titles || [],
-    job_location_or: [{ id: 6252001 }], // 6252001 = United States
+    job_location_or: [{ id: 6252001 }], // United States
     posted_at_max_age_days: parseInt(postedDays) || 15,
     blur_company_data: false,
     include_total_results: false,
-    limit: Math.min(count || 25, 25), // Free plan capped at 25 per page
-    page: page || 0
+    limit: Math.min(count || 25, 25),
+    page: page || 0,
+
+    // ── Company size: 20–200 employees ──────────────────────
+    min_employee_count: 20,
+    max_employee_count: 200,
+
+    // ── Established companies only: founded 15+ years ago ───
+    company_founded_at_max: foundedBefore,
+
+    // ── Tech/SaaS/B2B software industries only ───────────────
+    company_industry_or: [
+      "Software Development",
+      "Technology, Information and Internet",
+      "IT Services and IT Consulting",
+      "Computer and Network Security",
+      "Data Infrastructure and Analytics"
+    ],
+
+    // ── Exclude irrelevant industries ────────────────────────
+    company_industry_not: [
+      "Staffing and Recruiting",
+      "Human Resources Services",
+      "E-Learning Providers",
+      "Online Media",
+      "Advertising Services",
+      "Entertainment Providers",
+      "Retail",
+      "Food and Beverage Services",
+      "Hospitals and Health Care",
+      "Insurance",
+      "Financial Services",
+      "Real Estate",
+      "Construction",
+      "Transportation, Logistics, Supply Chain and Storage",
+      "Manufacturing",
+      "Oil, Gas, and Mining"
+    ],
+
+    // ── Exclude known large enterprises ─────────────────────
+    company_name_not: [
+      "Amazon", "Google", "Microsoft", "Apple", "Meta", "Salesforce",
+      "Oracle", "SAP", "IBM", "Adobe", "Cisco", "Dell", "HP", "Intel",
+      "ServiceNow", "Workday", "HubSpot", "Zendesk", "Atlassian",
+      "Twilio", "Snowflake", "Databricks", "Stripe", "Shopify"
+    ],
+
+    // ── Must be B2B / selling to businesses ─────────────────
+    // Only include companies whose description mentions enterprise/business/B2B signals
+    company_description_pattern_or: [
+      "enterprise", "B2B", "business software", "SaaS platform",
+      "software solution", "platform for", "management software",
+      "workflow", "compliance", "governance", "automation platform",
+      "data management", "business process", "ERP", "CRM", "cloud platform"
+    ],
+
+    // ── Exclude consumer/irrelevant description patterns ─────
+    company_description_pattern_not: [
+      "staffing", "recruiting", "talent agency", "job board",
+      "e-learning", "online courses", "education platform",
+      "food delivery", "restaurant", "social network", "consumer app",
+      "marketplace for", "gig economy", "freelance platform",
+      "media company", "news platform", "advertising agency",
+      "open source community", "non-profit"
+    ],
+
+    // ── Funding: exclude massive VC-backed hypergrowth startups ──
+    // We want established companies, not seed-stage startups
+    // No filter available but we use founded year as proxy (above)
+
+    // ── Job must be active / recently posted ─────────────────
+    order_by: [{ field: "discovered_at", desc: true }]
   };
 
   try {
@@ -83,18 +157,22 @@ app.post('/api/company', async (req, res) => {
   }
 });
 
-// Role lookup — correct endpoint: /api/v2/find/company/role (3 credits)
+// Role lookup — find person by role at a company
 app.post('/api/role', async (req, res) => {
   const { apiKey, linkedin_url, company_name, role } = req.body;
   if (!apiKey || !role) return res.status(400).json({ error: 'Missing fields' });
 
-  let url = `https://enrichlayer.com/api/v2/find/company/role?role=${encodeURIComponent(role)}&enrich_profile=enrich&use_cache=if-present`;
-  if (linkedin_url) url += `&linkedin_company_profile_url=${encodeURIComponent(linkedin_url)}`;
+  // Try the correct Enrichlayer endpoint for finding a person by role
+  let url = `https://enrichlayer.com/api/v2/person/role?role=${encodeURIComponent(role)}&use_cache=if-present`;
+  if (linkedin_url) url += `&company_linkedin_profile_url=${encodeURIComponent(linkedin_url)}`;
   if (company_name) url += `&company_name=${encodeURIComponent(company_name)}`;
 
   try {
     const response = await apiFetch(url, apiKey);
-    const data = await response.json();
+    const text = await response.text();
+    console.log('Role lookup response:', response.status, text.slice(0, 300));
+    let data;
+    try { data = JSON.parse(text); } catch { data = { error: text }; }
     res.status(response.status).json(data);
   } catch (err) {
     res.status(500).json({ error: err.message });
