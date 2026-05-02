@@ -31,35 +31,25 @@ app.post('/api/jobs', async (req, res) => {
   if (!tsApiKey) return res.status(400).json({ error: 'Missing Theirstack API key' });
 
   const body = {
-    job_title_or: titles || [],
-    job_location_or: [{ id: 6252001 }], // United States
-    posted_at_max_age_days: parseInt(postedDays) || 15,
-    blur_company_data: false,
-    include_total_results: false,
-    limit: Math.min(count || 25, 25),
-    page: page || 0,
+    // Job title keywords — exact from Theirstack cURL
+    job_title_or: [
+      "marketing", "outbound", "growth", "demand", "sales", "business development"
+    ],
 
-    // ── Company size: 20–200 employees ──────────────────────
+    // North America location ID (from Theirstack cURL)
+    job_location_or: [{ id: 6255149 }],
+
+    // Posted within X days
+    posted_at_max_age_days: parseInt(postedDays) || 15,
+
+    // Industry IDs — 6=Software Dev, 43=IT Services, 11=Tech/Internet, 2401=Data/Analytics, 96=Cybersecurity
+    industry_id_or: [6, 43, 11, 2401, 96],
+
+    // Company size: 20-200 employees
     min_employee_count: 20,
     max_employee_count: 200,
 
-    // Note: Theirstack doesn't support founded year filter directly
-    // We handle age filtering on the frontend based on company data returned
-
-    // ── Job description must contain B2B software signals ──
-    job_description_pattern_or: [
-      "enterprise", "B2B", "SaaS", "software platform", "business software",
-      "workflow", "compliance", "governance", "automation", "cloud platform",
-      "ERP", "CRM", "data management", "business process"
-    ],
-
-    // ── Exclude irrelevant job descriptions ─────────────────
-    job_description_pattern_not: [
-      "staffing agency", "recruiting firm", "e-learning", "food delivery",
-      "restaurant", "retail store", "social network", "consumer app"
-    ],
-
-    // ── Exclude known large enterprises ─────────────────────
+    // Exclude large enterprises
     company_name_not: [
       "Amazon", "Google", "Microsoft", "Apple", "Meta", "Salesforce",
       "Oracle", "SAP", "IBM", "Adobe", "Cisco", "Dell", "HP", "Intel",
@@ -67,30 +57,10 @@ app.post('/api/jobs', async (req, res) => {
       "Twilio", "Snowflake", "Databricks", "Stripe", "Shopify"
     ],
 
-    // ── Must be B2B / selling to businesses ─────────────────
-    // Only include companies whose description mentions enterprise/business/B2B signals
-    company_description_pattern_or: [
-      "enterprise", "B2B", "business software", "SaaS platform",
-      "software solution", "platform for", "management software",
-      "workflow", "compliance", "governance", "automation platform",
-      "data management", "business process", "ERP", "CRM", "cloud platform"
-    ],
-
-    // ── Exclude consumer/irrelevant description patterns ─────
-    company_description_pattern_not: [
-      "staffing", "recruiting", "talent agency", "job board",
-      "e-learning", "online courses", "education platform",
-      "food delivery", "restaurant", "social network", "consumer app",
-      "marketplace for", "gig economy", "freelance platform",
-      "media company", "news platform", "advertising agency",
-      "open source community", "non-profit"
-    ],
-
-    // ── Funding: exclude massive VC-backed hypergrowth startups ──
-    // We want established companies, not seed-stage startups
-    // No filter available but we use founded year as proxy (above)
-
-    // ── Job must be active / recently posted ─────────────────
+    blur_company_data: false,
+    include_total_results: false,
+    limit: Math.min(count || 25, 25),
+    page: page || 0,
     order_by: [{ field: "discovered_at", desc: true }]
   };
 
@@ -115,55 +85,74 @@ app.post('/api/jobs', async (req, res) => {
   }
 });
 
-// Get company profile — domain, name, size, industry
-app.post('/api/company', async (req, res) => {
-  const { apiKey, linkedin_url } = req.body;
-  if (!apiKey || !linkedin_url) return res.status(400).json({ error: 'Missing fields' });
-
-  const url = `https://enrichlayer.com/api/v2/company?linkedin_company_profile_url=${encodeURIComponent(linkedin_url)}&use_cache=if-present`;
-
+// Anymailfinder — find decision maker email by category
+async function findDecisionMakerEmail(amfApiKey, domain, category) {
   try {
-    const response = await apiFetch(url, apiKey);
+    const response = await fetch('https://api.anymailfinder.com/v5.1/find-email/decision-maker', {
+      method: 'POST',
+      headers: {
+        'Authorization': amfApiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ domain, categories: [category] })
+    });
     const data = await response.json();
-    res.status(response.status).json(data);
+    console.log(`AMF ${category} for ${domain}:`, response.status, JSON.stringify(data).slice(0, 200));
+    return data;
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('AMF error:', err.message);
+    return null;
   }
-});
+}
 
-// Role lookup — find person by role at a company
-app.post('/api/role', async (req, res) => {
-  const { apiKey, linkedin_url, company_name, role } = req.body;
-  if (!apiKey || !role) return res.status(400).json({ error: 'Missing fields' });
+// Map job titles to relevant Anymailfinder decision maker category
+function getRelevantCategory(jobTitles) {
+  const jobs = (jobTitles || []).join(' ').toLowerCase();
+  if (/demand|lead gen|digital market|inbound|content|product market|growth market/.test(jobs)) return 'cmo';
+  if (/vp market|head of market|director of market/.test(jobs)) return 'vp_marketing';
+  if (/sales|business dev|outbound|sdr|bdr|revenue/.test(jobs)) return 'vp_sales';
+  if (/growth/.test(jobs)) return 'cmo';
+  return 'cmo';
+}
 
-  // Try the correct Enrichlayer endpoint for finding a person by role
-  let url = `https://enrichlayer.com/api/v2/person/role?role=${encodeURIComponent(role)}&use_cache=if-present`;
-  if (linkedin_url) url += `&company_linkedin_profile_url=${encodeURIComponent(linkedin_url)}`;
-  if (company_name) url += `&company_name=${encodeURIComponent(company_name)}`;
+// Find 2 contacts: CEO + role-relevant decision maker
+app.post('/api/contacts', async (req, res) => {
+  const { amfApiKey, domain, jobTitles } = req.body;
+  if (!amfApiKey || !domain) return res.status(400).json({ error: 'Missing fields' });
 
-  try {
-    const response = await apiFetch(url, apiKey);
-    const text = await response.text();
-    console.log('Role lookup response:', response.status, text.slice(0, 300));
-    let data;
-    try { data = JSON.parse(text); } catch { data = { error: text }; }
-    res.status(response.status).json(data);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  const relevantCategory = getRelevantCategory(jobTitles);
+  const contacts = [];
+
+  // Contact 1: CEO/Founder always
+  const ceoResult = await findDecisionMakerEmail(amfApiKey, domain, 'ceo');
+  if (ceoResult && ceoResult.email) {
+    contacts.push({
+      email: ceoResult.email,
+      firstName: ceoResult.first_name || '',
+      lastName: ceoResult.last_name || '',
+      title: ceoResult.position || 'CEO / Founder',
+      verified: ceoResult.status === 'valid'
+    });
   }
-});
 
-// Test API key
-app.post('/api/test', async (req, res) => {
-  const { apiKey } = req.body;
-  if (!apiKey) return res.status(400).json({ error: 'Missing apiKey' });
-  try {
-    const response = await apiFetch('https://enrichlayer.com/api/v2/company?url=https://www.linkedin.com/company/apple/&use_cache=if-present', apiKey);
-    const data = await response.json();
-    res.json({ status: response.status, ok: response.ok, company: data.name || JSON.stringify(data).slice(0, 100) });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  await sleep(1000);
+
+  // Contact 2: Role-relevant decision maker
+  const roleResult = await findDecisionMakerEmail(amfApiKey, domain, relevantCategory);
+  if (roleResult && roleResult.email) {
+    // Only add if different person from CEO
+    if (!contacts.length || roleResult.email !== contacts[0].email) {
+      contacts.push({
+        email: roleResult.email,
+        firstName: roleResult.first_name || '',
+        lastName: roleResult.last_name || '',
+        title: roleResult.position || relevantCategory.replace(/_/g,' ').toUpperCase(),
+        verified: roleResult.status === 'valid'
+      });
+    }
   }
+
+  res.json({ contacts, relevantCategory });
 });
 
 app.get('*', (req, res) => {
