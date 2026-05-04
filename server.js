@@ -127,7 +127,7 @@ app.post('/api/contacts', async (req, res) => {
   // Build lookup params — prefer domain, fallback to company name
   async function findEmail(category) {
     try {
-      const body = { categories: [category] };
+      const body = { category: category };
       if (domain) body.domain = domain;
       else body.company_name = companyName;
 
