@@ -106,15 +106,14 @@ async function findDecisionMakerEmail(amfApiKey, domain, category) {
 }
 
 // Map job titles to relevant Anymailfinder decision maker category
-// Valid AMF decision_maker_category values
-// From their docs: ceo, cto, cfo, vp_sales, vp_marketing, head_of_marketing, head_of_sales
+// Valid AMF decision_maker_category values:
+// ceo, engineering, finance, hr, it, logistics, marketing, operations, buyer, sales
 function getRelevantCategory(jobTitles) {
   const jobs = (jobTitles || []).join(' ').toLowerCase();
-  if (/demand|lead gen|digital market|inbound|content|product market|growth market|cmo|chief market/.test(jobs)) return 'head_of_marketing';
-  if (/vp market|head of market|director of market/.test(jobs)) return 'vp_marketing';
-  if (/sales|business dev|outbound|sdr|bdr|revenue/.test(jobs)) return 'head_of_sales';
-  if (/growth/.test(jobs)) return 'head_of_marketing';
-  return 'head_of_marketing';
+  if (/sales|business dev|outbound|sdr|bdr|account exec/.test(jobs)) return 'sales';
+  if (/marketing|demand|lead gen|growth|digital|content|brand/.test(jobs)) return 'marketing';
+  if (/revenue|operations/.test(jobs)) return 'operations';
+  return 'marketing'; // default
 }
 
 // Find 2 contacts: CEO + role-relevant decision maker
@@ -129,7 +128,7 @@ app.post('/api/contacts', async (req, res) => {
   // Build lookup params — prefer domain, fallback to company name
   async function findEmail(category) {
     try {
-      const body = { decision_maker_category: category };
+      const body = { decision_maker_category: [category] };
       if (domain) body.domain = domain;
       else body.company_name = companyName;
 
@@ -176,6 +175,29 @@ app.post('/api/contacts', async (req, res) => {
   }
 
   res.json({ contacts, relevantCategory });
+});
+
+// Free domain lookup using company name
+app.post('/api/domain', async (req, res) => {
+  const { companyName } = req.body;
+  if (!companyName) return res.status(400).json({ error: 'Missing companyName' });
+
+  try {
+    // Use Clearbit Autocomplete API (free, no key needed)
+    const query = encodeURIComponent(companyName);
+    const response = await fetch(`https://autocomplete.clearbit.com/v1/companies/suggest?query=${query}`);
+    const data = await response.json();
+    if (data && data.length > 0) {
+      const domain = data[0].domain || '';
+      console.log(`Domain for ${companyName}:`, domain);
+      res.json({ domain });
+    } else {
+      res.json({ domain: '' });
+    }
+  } catch (err) {
+    console.error('Domain lookup error:', err.message);
+    res.json({ domain: '' });
+  }
 });
 
 app.get('*', (req, res) => {
