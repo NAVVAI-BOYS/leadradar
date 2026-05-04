@@ -94,7 +94,7 @@ async function findDecisionMakerEmail(amfApiKey, domain, category) {
         'Authorization': `Bearer ${amfApiKey}`,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ domain, categories: [category] })
+      body: JSON.stringify({ domain, decision_maker_category: category })
     });
     const data = await response.json();
     console.log(`AMF ${category} for ${domain}:`, response.status, JSON.stringify(data).slice(0, 200));
@@ -127,7 +127,7 @@ app.post('/api/contacts', async (req, res) => {
   // Build lookup params — prefer domain, fallback to company name
   async function findEmail(category) {
     try {
-      const body = { category: category };
+      const body = { decision_maker_category: category };
       if (domain) body.domain = domain;
       else body.company_name = companyName;
 
