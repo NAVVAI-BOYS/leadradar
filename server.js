@@ -106,13 +106,15 @@ async function findDecisionMakerEmail(amfApiKey, domain, category) {
 }
 
 // Map job titles to relevant Anymailfinder decision maker category
+// Valid AMF decision_maker_category values
+// From their docs: ceo, cto, cfo, vp_sales, vp_marketing, head_of_marketing, head_of_sales
 function getRelevantCategory(jobTitles) {
   const jobs = (jobTitles || []).join(' ').toLowerCase();
-  if (/demand|lead gen|digital market|inbound|content|product market|growth market/.test(jobs)) return 'cmo';
+  if (/demand|lead gen|digital market|inbound|content|product market|growth market|cmo|chief market/.test(jobs)) return 'head_of_marketing';
   if (/vp market|head of market|director of market/.test(jobs)) return 'vp_marketing';
-  if (/sales|business dev|outbound|sdr|bdr|revenue/.test(jobs)) return 'vp_sales';
-  if (/growth/.test(jobs)) return 'cmo';
-  return 'cmo';
+  if (/sales|business dev|outbound|sdr|bdr|revenue/.test(jobs)) return 'head_of_sales';
+  if (/growth/.test(jobs)) return 'head_of_marketing';
+  return 'head_of_marketing';
 }
 
 // Find 2 contacts: CEO + role-relevant decision maker
@@ -146,31 +148,31 @@ app.post('/api/contacts', async (req, res) => {
   }
 
   // Contact 1: CEO/Founder always
-  const ceoResult = await findEmail('ceo');
-  if (ceoResult && ceoResult.email) {
-    contacts.push({
-      email: ceoResult.email,
-      firstName: ceoResult.first_name || '',
-      lastName: ceoResult.last_name || '',
-      title: ceoResult.position || 'CEO / Founder',
-      verified: ceoResult.status === 'valid'
-    });
+  function extractContact(result, defaultTitle) {
+    if (!result || !result.email) return null;
+    // AMF returns person_full_name and person_job_title
+    const fullName = result.person_full_name || '';
+    const parts = fullName.trim().split(' ');
+    return {
+      email: result.email,
+      firstName: parts[0] || '',
+      lastName: parts.slice(1).join(' ') || '',
+      title: result.person_job_title || result.decision_maker_category || defaultTitle,
+      verified: result.email_status === 'valid'
+    };
   }
+
+  const ceoResult = await findEmail('ceo');
+  const ceoContact = extractContact(ceoResult, 'CEO / Founder');
+  if (ceoContact) contacts.push(ceoContact);
 
   await sleep(1000);
 
   // Contact 2: Role-relevant decision maker
   const roleResult = await findEmail(relevantCategory);
-  if (roleResult && roleResult.email) {
-    if (!contacts.length || roleResult.email !== contacts[0].email) {
-      contacts.push({
-        email: roleResult.email,
-        firstName: roleResult.first_name || '',
-        lastName: roleResult.last_name || '',
-        title: roleResult.position || relevantCategory.replace(/_/g,' ').toUpperCase(),
-        verified: roleResult.status === 'valid'
-      });
-    }
+  const roleContact = extractContact(roleResult, relevantCategory.replace(/_/g,' '));
+  if (roleContact && (!contacts.length || roleContact.email !== contacts[0].email)) {
+    contacts.push(roleContact);
   }
 
   res.json({ contacts, relevantCategory });
