@@ -91,7 +91,7 @@ async function findDecisionMakerEmail(amfApiKey, domain, category) {
     const response = await fetch('https://api.anymailfinder.com/v5.1/find-email/decision-maker', {
       method: 'POST',
       headers: {
-        'Authorization': amfApiKey,
+        'Authorization': `Bearer ${amfApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({ domain, categories: [category] })
@@ -116,15 +116,37 @@ function getRelevantCategory(jobTitles) {
 }
 
 // Find 2 contacts: CEO + role-relevant decision maker
+// Supports domain OR company name lookup
 app.post('/api/contacts', async (req, res) => {
-  const { amfApiKey, domain, jobTitles } = req.body;
-  if (!amfApiKey || !domain) return res.status(400).json({ error: 'Missing fields' });
+  const { amfApiKey, domain, companyName, jobTitles } = req.body;
+  if (!amfApiKey || (!domain && !companyName)) return res.status(400).json({ error: 'Missing fields' });
 
   const relevantCategory = getRelevantCategory(jobTitles);
   const contacts = [];
 
+  // Build lookup params — prefer domain, fallback to company name
+  async function findEmail(category) {
+    try {
+      const body = { categories: [category] };
+      if (domain) body.domain = domain;
+      else body.company_name = companyName;
+
+      const response = await fetch('https://api.anymailfinder.com/v5.1/find-email/decision-maker', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${amfApiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await response.json();
+      console.log(`AMF ${category} for ${domain || companyName}:`, response.status, JSON.stringify(data).slice(0, 200));
+      return data;
+    } catch(err) {
+      console.error('AMF error:', err.message);
+      return null;
+    }
+  }
+
   // Contact 1: CEO/Founder always
-  const ceoResult = await findDecisionMakerEmail(amfApiKey, domain, 'ceo');
+  const ceoResult = await findEmail('ceo');
   if (ceoResult && ceoResult.email) {
     contacts.push({
       email: ceoResult.email,
@@ -138,9 +160,8 @@ app.post('/api/contacts', async (req, res) => {
   await sleep(1000);
 
   // Contact 2: Role-relevant decision maker
-  const roleResult = await findDecisionMakerEmail(amfApiKey, domain, relevantCategory);
+  const roleResult = await findEmail(relevantCategory);
   if (roleResult && roleResult.email) {
-    // Only add if different person from CEO
     if (!contacts.length || roleResult.email !== contacts[0].email) {
       contacts.push({
         email: roleResult.email,
