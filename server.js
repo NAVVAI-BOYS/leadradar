@@ -112,6 +112,7 @@ function getRelevantCategory(jobTitles) {
   const jobs = (jobTitles || []).join(' ').toLowerCase();
   if (/sales|business dev|outbound|sdr|bdr|account exec/.test(jobs)) return 'sales';
   if (/marketing|demand|lead gen|growth|digital|content|brand/.test(jobs)) return 'marketing';
+  if (/transform|innovation|digital strategy|emerging tech|ai|artificial intelligence|chief digital|cdo/.test(jobs)) return 'it';
   if (/revenue|operations/.test(jobs)) return 'operations';
   return 'marketing'; // default
 }
