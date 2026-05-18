@@ -6,6 +6,56 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+
+// ── Server-side seen tracking ─────────────────────────────
+const SEEN_FILE = path.join(__dirname, 'seen_data.json');
+
+function loadSeenData() {
+  try {
+    if (fs.existsSync(SEEN_FILE)) {
+      return JSON.parse(fs.readFileSync(SEEN_FILE, 'utf8'));
+    }
+  } catch(e) { console.error('Error loading seen data:', e.message); }
+  return { companies: {}, emails: {} };
+}
+
+function saveSeenData(data) {
+  try {
+    fs.writeFileSync(SEEN_FILE, JSON.stringify(data, null, 2));
+  } catch(e) { console.error('Error saving seen data:', e.message); }
+}
+
+// Check if company/email is seen
+app.post('/api/seen/check', (req, res) => {
+  const { companies, emails } = req.body;
+  const data = loadSeenData();
+  const seenCompanies = (companies || []).filter(c => !!data.companies[c.toLowerCase()]);
+  const seenEmails = (emails || []).filter(e => !!data.emails[e.toLowerCase()]);
+  res.json({ seenCompanies, seenEmails });
+});
+
+// Mark companies and emails as seen
+app.post('/api/seen/mark', (req, res) => {
+  const { companies, emails } = req.body;
+  const data = loadSeenData();
+  const now = Date.now();
+  (companies || []).forEach(c => { data.companies[c.toLowerCase()] = now; });
+  (emails || []).forEach(e => { data.emails[e.toLowerCase()] = now; });
+  saveSeenData(data);
+  res.json({ ok: true, totalCompanies: Object.keys(data.companies).length, totalEmails: Object.keys(data.emails).length });
+});
+
+// Get stats
+app.get('/api/seen/stats', (req, res) => {
+  const data = loadSeenData();
+  res.json({ companies: Object.keys(data.companies).length, emails: Object.keys(data.emails).length });
+});
+
+// Clear seen data (use carefully!)
+app.post('/api/seen/clear', (req, res) => {
+  saveSeenData({ companies: {}, emails: {} });
+  res.json({ ok: true });
+});
 const fs = require('fs');
 console.log('CWD:', process.cwd());
 console.log('__dirname:', __dirname);
@@ -60,7 +110,7 @@ app.post('/api/jobs', async (req, res) => {
     blur_company_data: false,
     include_total_results: false,
     limit: Math.min(count || 25, 25),
-    page: page || 0,
+    page: Math.min(page || 0, 4), // Free plan limited to 5 pages (0-4)
     order_by: [{ field: "discovered_at", desc: true }]
   };
 
@@ -168,11 +218,17 @@ app.post('/api/contacts', async (req, res) => {
 
   await sleep(1000);
 
-  // Contact 2: Role-relevant decision maker
+  // Contact 2: Role-relevant senior decision maker only
   const roleResult = await findEmail(relevantCategory);
   const roleContact = extractContact(roleResult, relevantCategory.replace(/_/g,' '));
   if (roleContact && (!contacts.length || roleContact.email !== contacts[0].email)) {
-    contacts.push(roleContact);
+    const title = (roleContact.title || '').toLowerCase();
+    const isSenior = /head|vp|vice president|director|president|founder|co-founder|chief|officer|partner|principal|owner/.test(title);
+    if (isSenior) {
+      contacts.push(roleContact);
+    } else {
+      console.log('Skipping ' + roleContact.title + ' - not senior enough');
+    }
   }
 
   res.json({ contacts, relevantCategory });
